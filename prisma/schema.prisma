@@ -18,4 +18,36 @@ model User {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
+
+  // ユーザーが飼っている猫たち
+  cats      Cat[]
+}
+
+// 追加：活動量の列挙型
+enum Activity {
+  LOW
+  NORMAL
+  HIGH
+}
+
+//猫のプロフィール
+model Cat {
+  id           String    @id @default(uuid())
+  userId       String
+  name         String
+  weightKg     Float     // 体重（kg）
+  ageYears     Int       // 年齢（年）
+  activity     Activity  @default(NORMAL)
+  sex          String    @default("不明")   // オス/メス/不明など
+  hairAmount   String    @default("普通")   // 少ない/普通/多い
+  size         String    @default("中型")   // 小型/中型/大型
+  neutered     Boolean   @default(false)    // 去勢済み: true/false
+
+  allergies    String?   // アレルギー（カンマ区切り等）
+  createdAt    DateTime  @default(now())
+
+  // リレーション
+  user         User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }
