@@ -20,10 +20,10 @@ model User {
   createdAt DateTime @default(now())
 
   // ユーザーが飼っている猫たち
-  cats      Cat[]
+  cats Cat[]
 }
 
-// 追加：活動量の列挙型
+// 活動量の列挙型
 enum Activity {
   LOW
   NORMAL
@@ -32,22 +32,55 @@ enum Activity {
 
 //猫のプロフィール
 model Cat {
-  id           String    @id @default(uuid())
-  userId       String
-  name         String
-  weightKg     Float     // 体重（kg）
-  ageYears     Int       // 年齢（年）
-  activity     Activity  @default(NORMAL)
-  sex          String    @default("不明")   // オス/メス/不明など
-  hairAmount   String    @default("普通")   // 少ない/普通/多い
-  size         String    @default("中型")   // 小型/中型/大型
-  neutered     Boolean   @default(false)    // 去勢済み: true/false
+  id         String   @id @default(uuid())
+  userId     String
+  name       String
+  weightKg   Float
+  ageYears   Int
+  activity   Activity @default(NORMAL)
+  sex        String   @default("不明")
+  hairAmount String   @default("普通")
+  size       String   @default("中型")
+  neutered   Boolean  @default(false)
+  allergies  String?
+  createdAt  DateTime @default(now())
 
-  allergies    String?   // アレルギー（カンマ区切り等）
-  createdAt    DateTime  @default(now())
+  // 既存
+  user User @relation(fields: [userId], references: [id])
 
-  // リレーション
-  user         User      @relation(fields: [userId], references: [id])
+  preferences IngredientPreference[]
 
   @@index([userId])
+}
+
+// 原材料
+model Product {
+  id               Int      @id @default(autoincrement())
+  barcode          String   @unique // JAN/EAN
+  name             String
+  brand            String   @default("")
+  ingredients_text String   @default("") // 原材料の生テキスト
+  image            String   @default("") // 画像URL（任意）
+  source           String   @default("local") // local / openfoodfacts / openpetfoodfacts
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+enum IngredientLevel {
+  OK
+  CAUTION
+  NG
+}
+
+model IngredientPreference {
+  id        String          @id @default(uuid())
+  catId     String
+  keyword   String
+  level     IngredientLevel   // 
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  cat Cat @relation(fields: [catId], references: [id])
+
+  @@unique([catId, keyword])  // ← ★ upsert で使う複合ユニークキー
 }

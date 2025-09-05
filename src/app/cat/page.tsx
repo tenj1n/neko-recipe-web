@@ -20,32 +20,57 @@ type Cat = {
 };
 
 export default function CatListPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [cats, setCats] = useState<Cat[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // 未ログインなら /login へ
   useEffect(() => {
     if (status === "unauthenticated") {
       window.location.href = "/login";
     }
   }, [status]);
 
-  // 一覧取得
+  async function load() {
+    try {
+      setError(null);
+      const res = await fetch("/api/cat", { cache: "no-store" });
+      if (!res.ok) throw new Error("一覧の取得に失敗しました");
+      const data: Cat[] = await res.json();
+      setCats(data);
+    } catch (e: any) {
+      setError(e.message ?? "エラーが発生しました");
+    }
+  }
+
   useEffect(() => {
-    if (status !== "authenticated") return;
-    (async () => {
-      try {
-        setError(null);
-        const res = await fetch("/api/cat", { cache: "no-store" });
-        if (!res.ok) throw new Error("一覧の取得に失敗しました");
-        const data: Cat[] = await res.json();
-        setCats(data);
-      } catch (e: any) {
-        setError(e.message ?? "エラーが発生しました");
-      }
-    })();
+    if (status === "authenticated") load();
   }, [status]);
+
+  async function handleDelete(id: string, name: string) {
+    if (!window.confirm(`「${name}」を削除します。よろしいですか？`)) return;
+
+    const prev = cats ?? [];
+    setDeletingId(id);
+    setCats(prev.filter((c) => c.id !== id));
+
+    try {
+      const res = await fetch(`/api/cat/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        let msg = `削除に失敗しました (${res.status})`;
+        try {
+          const j = await res.json();
+          if (j?.error) msg = j.error;
+        } catch {}
+        throw new Error(msg);
+      }
+    } catch (e: any) {
+      setCats(prev);
+      alert(e.message ?? "削除に失敗しました");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (status === "loading" || cats === null) {
     return (
@@ -62,10 +87,7 @@ export default function CatListPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">あなたの猫一覧</h1>
         <div className="flex gap-3">
-          <Link
-            href="/cat/new"
-            className="border px-4 py-2 rounded font-semibold"
-          >
+          <Link href="/cat/new" className="border px-4 py-2 rounded font-semibold">
             ＋ 新規追加
           </Link>
           <button
@@ -93,6 +115,7 @@ export default function CatListPage() {
                   {new Date(c.createdAt).toLocaleDateString()}
                 </span>
               </div>
+
               <div className="text-sm space-y-1">
                 <p>体重: {c.weightKg} kg / 年齢: {c.ageYears} 歳</p>
                 <p>活動量: {labelActivity(c.activity)}</p>
@@ -100,18 +123,27 @@ export default function CatListPage() {
                 {c.hairAmount && <p>毛の量: {c.hairAmount}</p>}
                 {c.size && <p>大きさ: {c.size}</p>}
                 {typeof c.neutered === "boolean" && (
-                  <p>去勢・避妊: {c.neutered ? "済み" : "未"}</p>
+                  <p>繁殖防止: {c.neutered ? "済み" : "未"}</p>
                 )}
                 {c.allergies && <p>アレルギー: {c.allergies}</p>}
               </div>
+
               <div className="flex gap-2 pt-2">
-              <Link
-                href={`/cat/${c.id}/edit`}
-                className="border px-3 py-1 rounded text-sm"
-              >
-                編集
-              </Link>
-            </div>
+                <Link
+                  href={`/cat/${c.id}/edit`}
+                  className="border px-3 py-1 rounded text-sm"
+                >
+                  編集
+                </Link>
+                <button
+                  onClick={() => handleDelete(c.id, c.name)}
+                  disabled={deletingId === c.id}
+                  className="border px-3 py-1 rounded text-sm text-red-600 disabled:opacity-60"
+                  title="削除"
+                >
+                  {deletingId === c.id ? "削除中…" : "削除"}
+                </button>
+              </div>
             </li>
           ))}
         </ul>

@@ -1,7 +1,9 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Providers from "./providers"; // ★ 追加
+import Providers from "./providers";
+import Header from "@/components/Header";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,17 +22,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* ★ ここで全体を SessionProvider でラップ */}
+    <html lang="ja">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
-          {children}
+          <div className="min-h-dvh flex flex-col">
+            <Header />
+            <main className="p-4">{children}</main>
+          </div>
         </Providers>
       </body>
     </html>
