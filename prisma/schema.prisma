@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,18 +13,15 @@ model User {
   password  String
   createdAt DateTime @default(now())
 
-  // ユーザーが飼っている猫たち
   cats Cat[]
 }
 
-// 活動量の列挙型
 enum Activity {
   LOW
   NORMAL
   HIGH
 }
 
-//猫のプロフィール
 model Cat {
   id         String   @id @default(uuid())
   userId     String
@@ -45,7 +36,6 @@ model Cat {
   allergies  String?
   createdAt  DateTime @default(now())
 
-  // 既存
   user User @relation(fields: [userId], references: [id])
 
   preferences IngredientPreference[]
@@ -53,17 +43,22 @@ model Cat {
   @@index([userId])
 }
 
-// 原材料
 model Product {
   id               Int      @id @default(autoincrement())
-  barcode          String   @unique // JAN/EAN
+  barcode          String   @unique
   name             String
   brand            String   @default("")
-  ingredients_text String   @default("") // 原材料の生テキスト
-  image            String   @default("") // 画像URL（任意）
-  source           String   @default("local") // local / openfoodfacts / openpetfoodfacts
+  ingredients_text String   @default("")
+  image            String   @default("")
+  source           String   @default("local")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
+  @@index([name])
+  @@index([brand])
+  @@index([ingredients_text])
+
+  variants ProductVariant[]
 }
 
 enum IngredientLevel {
@@ -76,11 +71,42 @@ model IngredientPreference {
   id        String          @id @default(uuid())
   catId     String
   keyword   String
-  level     IngredientLevel   // 
+  level     IngredientLevel
   createdAt DateTime         @default(now())
   updatedAt DateTime         @updatedAt
 
   cat Cat @relation(fields: [catId], references: [id])
 
-  @@unique([catId, keyword])  // ← ★ upsert で使う複合ユニークキー
+  @@unique([catId, keyword])
+}
+
+model ProductVariant {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  form      String
+  label     String
+  lifeStage String?
+  flavor    String   @default("")
+  features  String?
+
+  ingredients_text String @default("")
+
+  proteinMin   Float?
+  fatMin       Float?
+  fiberMax     Float?
+  ashMax       Float?
+  moistureMax  Float?
+  kcalPer100g  Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+  @@unique([productId, form, label, flavor])
+  @@index([label])
+  @@index([flavor])
+  @@index([features])
+  @@index([ingredients_text])
 }

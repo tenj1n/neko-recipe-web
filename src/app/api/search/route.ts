@@ -1,77 +1,85 @@
-import { NextResponse } from "next/server";
+// /src/app/api/search/route.ts
 import { prisma } from "@/lib/db";
+export const dynamic = "force-dynamic"; // 毎回検索
 
-// 検索API: まず自前DB、足りなければ外部APIも併用
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") ?? "").trim();
-  if (!q) return NextResponse.json({ q, count: 0, items: [] });
+// 全角/半角・空白・小文字化のゆるい正規化
+const normalize = (s: string) =>
+  s.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
 
-  // 1) 先にローカルDBを検索（部分一致・大文字小文字区別なし）
-  const local = await prisma.product.findMany({
-    where: {
-      OR: [
-        { name: { contains: q } },
-        { brand: { contains: q } },
-      ],
-    },
-    take: 20,
-    orderBy: { name: "asc" },
-  });
+// GET/POST どちらでも q/keyword/query/term/text を受け取る
+async function extractQuery(req: Request) {
+  const url = new URL(req.url);
+  const fromGet =
+    url.searchParams.get("q") ??
+    url.searchParams.get("keyword") ??
+    url.searchParams.get("query") ??
+    url.searchParams.get("term") ??
+    url.searchParams.get("text");
+  if (fromGet) return fromGet;
 
-  const localItems = local.map((p) => ({
-    source: "local" as const,
-    barcode: p.barcode,
-    brand: p.brand ?? "",
-    name: p.name ?? "",
-    image: p.image ?? "",
-    ingredients_text: p.ingredients_text ?? "",
-  }));
-
-  // 2) 外部API（OpenFoodFacts）も並行で取得（日本語は薄いのでオマケ扱い）
-  //    外部が遅くてもUIが固まらないようにタイムアウト短め
-  let externalItems: any[] = [];
-  try {
-    const controller = new AbortController();
-    const t = setTimeout(() => controller.abort(), 4000); // 4秒で諦める
-    const r = await fetch(
-      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
-        q
-      )}&search_simple=1&action=process&json=1&page_size=10`,
-      { signal: controller.signal, cache: "no-store" }
-    );
-    clearTimeout(t);
-    if (r.ok) {
-      const j = await r.json();
-      externalItems =
-        (j.products ?? []).map((it: any) => ({
-          source: "off" as const,
-          barcode: String(it.code ?? ""),
-          brand: String(it.brands ?? "").split(",")[0]?.trim() ?? "",
-          name: String(it.product_name ?? it.generic_name ?? "").trim(),
-          image:
-            it.image_front_small_url ||
-            it.image_small_url ||
-            it.image_url ||
-            "",
-          ingredients_text:
-            it.ingredients_text_jp ||
-            it.ingredients_text ||
-            "",
-        })) ?? [];
+  const ct = req.headers.get("content-type") || "";
+  if (ct.includes("application/json")) {
+    try {
+      const body = await req.json();
+      return body?.q ?? body?.keyword ?? body?.query ?? body?.term ?? body?.text ?? "";
+    } catch {
+      return "";
     }
-  } catch {
-    // 外部失敗は無視（ローカル結果だけ返す）
   }
+  return "";
+}
 
-  // 3) ローカル優先で結合（同一バーコードは重複排除）
-  const seen = new Set<string>();
-  const items = [...localItems, ...externalItems].filter((x) => {
-    const key = x.barcode || `${x.source}:${x.name}:${x.brand}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
+// Prisma where 用：SQLite は mode: "insensitive" 非対応なので付けない
+const orFor = (t: string) => [
+  { name: { contains: t } },
+  { brand: { contains: t } },
+  { ingredients_text: { contains: t } },
+  { variants: { some: { label: { contains: t } } } },
+  { variants: { some: { flavor: { contains: t } } } },
+  { variants: { some: { features: { contains: t } } } },
+  { variants: { some: { ingredients_text: { contains: t } } } },
+];
+
+async function doSearch(input: string) {
+  const kw = normalize(input);
+  if (!kw) return [];
+  const terms = kw.split(" ").filter(Boolean);
+  const and = terms.length ? terms.map((t) => ({ OR: orFor(t) })) : [{ OR: orFor(kw) }];
+
+  const rows = await prisma.product.findMany({
+    where: { AND: and },
+    include: { variants: true },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: 30,
   });
 
-  return NextResponse.json({ q, count: items.length, items });
+  // バリアント有りを上に
+  rows.sort((a, b) => b.variants.length - a.variants.length);
+  return rows;
+}
+
+const json = (d: unknown, init?: number | ResponseInit) =>
+  new Response(JSON.stringify(d), {
+    ...(typeof init === "number" ? { status: init } : init),
+    headers: { "content-type": "application/json; charset=utf-8" },
+  });
+
+export async function GET(req: Request) {
+  try {
+    const q = await extractQuery(req);
+    return json(await doSearch(q));
+  } catch (e) {
+    console.error("GET /api/search error", e);
+    return json({ error: "internal_error" }, 500);
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const q = await extractQuery(req);
+    return json(await doSearch(q));
+  } catch (e) {
+    console.error("POST /api/search error", e);
+    return json({ error: "internal_error" }, 500);
+  }
 }
