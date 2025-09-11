@@ -1,6 +1,7 @@
 // src/components/ProductSearch.tsx
 "use client";
 
+import Link from "next/link";
 import React, { useRef, useState } from "react";
 
 type Variant = {
@@ -143,7 +144,11 @@ export default function ProductSearch() {
 
       <div className="space-y-3">
         {items.map((p) => (
-          <div key={p.id} className="border rounded-2xl p-3">
+          <Link
+            key={p.id}
+            href={`/products/${encodeURIComponent(p.barcode)}`}
+            className="block border rounded-2xl p-3 hover:bg-neutral-800/50 transition"
+          >
             <div className="font-semibold">{p.name}</div>
             <div className="text-xs opacity-70">{p.brand} / {p.barcode}</div>
 
@@ -152,7 +157,8 @@ export default function ProductSearch() {
                 {p.variants.map((v) => (
                   <button
                     key={v.id}
-                    onClick={() => applyVariantChip(p, v)}
+                    // ボタン操作時にリンク遷移しないように抑止
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); applyVariantChip(p, v); }}
                     className="text-xs px-2 py-1 rounded-full border bg-neutral-800 hover:bg-neutral-700"
                     title="この条件で絞り込む"
                   >
@@ -171,7 +177,7 @@ export default function ProductSearch() {
             ) : (
               <div className="text-xs opacity-60 mt-2">バリアント未登録</div>
             )}
-          </div>
+          </Link>
         ))}
 
         {!loading && q && items.length === 0 && !error && (

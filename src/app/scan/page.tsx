@@ -34,7 +34,7 @@ export default function ScanPage() {
       {code && <div className="text-xs text-gray-500 mt-1">読取りコード: {code}</div>}
       {loading && <p className="mt-3">検索中…</p>}
 
-      {product && !product.error && <ProductCard product={product} catId={catId} />}
+      {product && !product.error && <ProductCard product={product} />}
 
       {product?.error && (
         <div className="mt-4 border p-3 rounded bg-red-50">

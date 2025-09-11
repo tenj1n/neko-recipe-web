@@ -1,10 +1,15 @@
-// NextAuth の既成ミドルウェアをそのまま使う
-export { default } from "next-auth/middleware";
+// src/middleware.ts
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-// ここに書いた“以外”はすべて認証必須
+export function middleware(_req: NextRequest) {
+  return NextResponse.next();
+}
+
+// /api/auth と静的リソースは除外
 export const config = {
   matcher: [
-    // ログイン不要のパスを除外
-    "/((?!login|register|api/auth|_next|favicon.ico).*)",
+    // これ以外のパスにだけミドルウェアを適用
+    '/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:png|jpg|jpeg|svg|gif|ico)).*)',
   ],
 };

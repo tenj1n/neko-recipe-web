@@ -1,28 +1,34 @@
 "use client";
-import { useEffect, useState } from "react";
-import { useActiveCat } from "@/lib/useActiveCat";
 
-type Cat = { id: string; name: string };
+import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { setActiveCat } from "@/app/cat/actions";
 
-export default function CatPicker() {
-  const { catId, setCatId } = useActiveCat();
-  const [cats, setCats] = useState<Cat[]>([]);
+type CatOption = { id: string; name: string };
 
-  useEffect(() => {
-    (async () => {
-      const r = await fetch("/api/cat"); // 既存: /api/cat (GET) 猫一覧
-      const j = await r.json();
-      setCats(Array.isArray(j) ? j : []);
-      if (!catId && j?.[0]?.id) setCatId(j[0].id); // 初回は先頭を選択
-    })();
-  }, []);
+export default function CatPicker({
+  cats,
+  activeCatId,
+}: {
+  cats: CatOption[];
+  activeCatId?: string | null;
+}) {
+  const [pending, start] = useTransition();
+  const router = useRouter();
 
   return (
     <select
-      className="border rounded px-2 py-1 text-sm"
-      value={catId ?? ""}
-      onChange={(e) => setCatId(e.target.value)}
+      className="px-2 py-1 rounded border bg-black text-white"
+      value={activeCatId ?? ""}
+      onChange={(e) =>
+        start(async () => {
+          await setActiveCat(e.target.value);
+          router.refresh(); // サーバーコンポーネントを再描画（Cookie反映）
+        })
+      }
+      disabled={pending}
     >
+      <option value="" disabled>猫を選択</option>
       {cats.map((c) => (
         <option key={c.id} value={c.id}>{c.name}</option>
       ))}

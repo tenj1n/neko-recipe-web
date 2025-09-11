@@ -1,13 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { analyzeWithPrefs, PrefLevel, PrefMap } from "@/lib/analyzeIngredients";
+import { analyzeIngredients } from "@/lib/analyzeIngredients"; // ← これだけあればOK
+import { IngredientLevel } from "@prisma/client";
 
 type Item = {
   name?: string;
   brand?: string;
   image?: string;
   ingredients_text?: string;
+};
+
+type PrefLevel = IngredientLevel;
+type PrefMap = Record<string, PrefLevel>;
+
+/** UI用に最低限の形に正規化して使う */
+type AnalyzeUiResult = {
+  tokens: { word?: string; norm?: string }[];
+  summary: { OK: string[]; CAUTION: string[]; NG: string[] };
 };
 
 export default function TagDialog({
@@ -26,9 +36,13 @@ export default function TagDialog({
   const ingredients = item.ingredients_text ?? "";
 
   // 現在の嗜好（DB）
-  const [serverPrefs, setServerPrefs] = useState<{ keyword: string; level: PrefLevel }[]>([]);
+  const [serverPrefs, setServerPrefs] = useState<
+    { keyword: string; level: PrefLevel }[]
+  >([]);
   // ローカル編集用（保存を押すまで確定しない）
-  const [localMap, setLocalMap] = useState<Record<string, PrefLevel | null>>({});
+  const [localMap, setLocalMap] = useState<Record<string, PrefLevel | null>>(
+    {}
+  );
   const [saving, setSaving] = useState(false);
 
   // 現在の嗜好ロード
@@ -37,15 +51,18 @@ export default function TagDialog({
     (async () => {
       const r = await fetch(`/api/cats/${catId}/prefs`, { cache: "no-store" });
       const j = await r.json();
-      const arr = Array.isArray(j) ? j : [];
+      const arr: { keyword: string; level: PrefLevel }[] = Array.isArray(j)
+        ? j
+        : [];
       setServerPrefs(arr);
+
       const map: Record<string, PrefLevel | null> = {};
       for (const p of arr) map[(p.keyword || "").toLowerCase()] = p.level;
       setLocalMap(map);
     })();
   }, [open, catId]);
 
-  // 解析（ローカル編集を反映）
+  // 解析（ローカル編集は保存時にサーバへ反映。UI では結果だけ使う）
   const prefMap: PrefMap = useMemo(() => {
     const m: PrefMap = {};
     for (const k of Object.keys(localMap)) {
@@ -55,10 +72,25 @@ export default function TagDialog({
     return m;
   }, [localMap]);
 
-  const analysis = useMemo(
-    () => analyzeWithPrefs(ingredients, prefMap),
-    [ingredients, prefMap]
-  );
+  const analysis: AnalyzeUiResult = useMemo(() => {
+    try {
+      // ★ 実装側が受け付けるのは catId だけなので override は渡さない
+      const res: any = analyzeIngredients(ingredients, { catId });
+
+      // UIで必要な最小セットに正規化（欠けていても落ちないように）
+      const tokens = Array.isArray(res?.tokens) ? res.tokens : [];
+      const summary = {
+        OK: Array.isArray(res?.summary?.OK) ? res.summary.OK : [],
+        CAUTION: Array.isArray(res?.summary?.CAUTION)
+          ? res.summary.CAUTION
+          : [],
+        NG: Array.isArray(res?.summary?.NG) ? res.summary.NG : [],
+      };
+      return { tokens, summary };
+    } catch {
+      return { tokens: [], summary: { OK: [], CAUTION: [], NG: [] } };
+    }
+  }, [ingredients, catId]);
 
   function setLevel(normKey: string, level: PrefLevel | null) {
     setLocalMap((prev) => ({ ...prev, [normKey]: level }));
@@ -71,7 +103,6 @@ export default function TagDialog({
         .filter(([, level]) => !!level)
         .map(([keyword, level]) => ({ keyword, level }));
 
-      // 一括保存（無ければ単発PUTをループでもOK）
       await fetch(`/api/cats/${catId}/prefs/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -119,13 +150,12 @@ export default function TagDialog({
         </div>
 
         <div className="mt-3 text-xs text-gray-400">
-          成分ラベルをクリック → 右側の「OK / 注意 / NG」で選択。
-          保存ボタンを押すと反映されます。
+          成分ラベルをクリック → 右側の「OK / 注意 / NG」で選択。保存ボタンで反映されます。
         </div>
 
         {/* 成分チップ */}
         <div className="mt-3 flex flex-wrap gap-2">
-          {analysis.tokens.map((t: any, i: number) => {
+          {(analysis.tokens ?? []).map((t, i) => {
             const norm = (t.norm ?? t.word ?? "").toLowerCase();
             const chosen = localMap[norm] ?? null;
 
@@ -145,7 +175,7 @@ export default function TagDialog({
               >
                 <span>{t.word ?? t.norm}</span>
 
-                {/* 三択ボタン（選択は濃色、非選択は薄色） */}
+                {/* 三択ボタン */}
                 <div className="flex gap-1">
                   <button
                     type="button"
@@ -205,13 +235,13 @@ export default function TagDialog({
             OK: {analysis.summary.OK.length} / 注意:{" "}
             {analysis.summary.CAUTION.length} / NG: {analysis.summary.NG.length}
           </div>
-          {analysis.summary.CAUTION.length > 0 && (
+          {!!analysis.summary.CAUTION.length && (
             <div className="mt-1">
               <span className="text-orange-500 font-medium mr-1">注意:</span>
               {analysis.summary.CAUTION.join("、")}
             </div>
           )}
-          {analysis.summary.NG.length > 0 && (
+          {!!analysis.summary.NG.length && (
             <div className="mt-1 text-red-500 font-semibold">
               危険（NG）: {analysis.summary.NG.join("、")}
             </div>

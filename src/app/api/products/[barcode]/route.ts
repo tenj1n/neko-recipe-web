@@ -1,12 +1,20 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db"; // 相対パス: src/app/api/products/[barcode]/route.ts から
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 
-export async function GET(_: Request, { params }: { params: { barcode: string } }) {
-  const barcode = params.barcode?.trim();
-  if (!barcode) return NextResponse.json({ error: "barcode required" }, { status: 400 });
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ barcode: string }> }
+) {
+  const { barcode: raw } = await ctx.params;
+  const barcode = raw?.trim();
+  if (!barcode)
+    return NextResponse.json({ error: "barcode required" }, { status: 400 });
 
-  // 1) まずDBキャッシュ
-  const hit = await prisma.product.findUnique({ where: { barcode } });
+  // まず DB
+  const hit = await prisma.product.findUnique({
+    where: { barcode },
+    include: { variants: { orderBy: { id: "asc" } } },
+  });
   if (hit) {
     return NextResponse.json({
       source: hit.source,
@@ -15,11 +23,12 @@ export async function GET(_: Request, { params }: { params: { barcode: string } 
       name: hit.name,
       ingredients_text: hit.ingredients_text,
       image: hit.image,
+      variants: hit.variants,
       raw: null,
     });
   }
 
-  // 2) 外部API（OFF/OPFF）
+  // 外部API
   const endpoints = [
     `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
     `https://world.openpetfoodfacts.org/api/v2/product/${barcode}.json`,
@@ -32,29 +41,32 @@ export async function GET(_: Request, { params }: { params: { barcode: string } 
       if (j?.status === 1 || j?.product) {
         const p = j.product;
         const data = {
-          source: url.includes("openpetfoodfacts") ? "openpetfoodfacts" : "openfoodfacts",
+          source: url.includes("openpetfoodfacts")
+            ? "openpetfoodfacts"
+            : "openfoodfacts",
           barcode,
           brand: p?.brands || "",
           name: p?.product_name || p?.generic_name || "",
           ingredients_text:
-            p?.ingredients_text_jp || p?.ingredients_text_ja || p?.ingredients_text || "",
+            p?.ingredients_text_jp ||
+            p?.ingredients_text_ja ||
+            p?.ingredients_text ||
+            "",
           image: p?.image_url || "",
         };
 
-        // 3) 取得できたら保存（次回以降はDBヒット）
         await prisma.product.upsert({
           where: { barcode },
-          create: { ...data },
-          update: { ...data },
+          create: data,
+          update: data,
         });
 
         return NextResponse.json({ ...data, raw: p });
       }
     } catch {
-      // 次のエンドポイントへ
+      // 次へ
     }
   }
 
-  // 4) 見つからない
   return NextResponse.json({ error: "product not found", barcode }, { status: 404 });
 }

@@ -6,10 +6,13 @@
         "dev": "next dev --turbopack",
         "build": "next build --turbopack",
         "start": "next start",
-        "lint": "eslint"
+        "lint": "eslint",
+        "prisma:generate": "prisma generate",
+        "prisma:migrate": "prisma migrate dev",
+        "prisma:seed": "ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts"
     },
     "dependencies": {
-        "@prisma/client": "^6.15.0",
+        "@prisma/client": "^6.16.0",
         "@zxing/browser": "^0.1.5",
         "bcryptjs": "^3.0.2",
         "next": "15.5.2",
@@ -27,12 +30,9 @@
         "@types/react-dom": "^19",
         "eslint": "^9",
         "eslint-config-next": "15.5.2",
-        "prisma": "^6.15.0",
+        "prisma": "^6.16.0",
         "tailwindcss": "^4",
-        "typescript": "^5",
-        "ts-node": "^10.9.2"
-    },
-    "prisma": {
-        "seed": "ts-node prisma/seed.ts"
+        "ts-node": "^10.9.2",
+        "typescript": "^5"
     }
 }

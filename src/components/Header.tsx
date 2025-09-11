@@ -1,17 +1,18 @@
-// src/components/Header.tsx
-"use client";
+import { prisma } from "@/lib/db";
+import { cookies } from "next/headers";
+import CatPicker from "@/components/CatPicker";
 
-import dynamic from "next/dynamic";
+export default async function Header() {
+  const ck = await cookies();
+  const activeCatId = ck.get("activeCatId")?.value ?? "";
 
-// CatPicker はブラウザAPI(localStorage)を使うのでクライアント限定。
-// クライアント側なら ssr:false を使ってOK。
-const CatPicker = dynamic(() => import("@/components/CatPicker"), { ssr: false });
+  // TODO: ログインユーザーIDに合わせる（ここでは簡易的に全件）
+  const cats = await prisma.cat.findMany({ select: { id: true, name: true } });
 
-export default function Header() {
   return (
-    <header className="sticky top-0 z-10 border-b bg-white/80 dark:bg-black/60 backdrop-blur px-4 py-2 flex items-center justify-between">
+    <header className="flex items-center justify-between p-3 border-b">
       <div className="font-semibold">neko-recipe</div>
-      <CatPicker />
+      <CatPicker cats={cats} activeCatId={activeCatId} />
     </header>
   );
 }
