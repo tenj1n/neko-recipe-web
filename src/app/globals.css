@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
+/* === 背景だけクリーム固定（他は触らない） ========================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #FFF8F0;   /* ← 背景だけ変更 */
+  --foreground: #171717;   /* ← 元のまま（見出し・文字色は従来通り） */
 }
 
 @theme inline {
@@ -10,17 +11,123 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* 可愛い系トークン（ローディング猫などで使用） */
+  --color-cream: #FFF8F0;
+  --color-pinkpaw: #FADADD;
+  --color-pawBrown: #7A5D52;
+  --color-catGray: #5A5A5A;
 }
 
+/* OSがダークでも同じ配色に固定（背景だけライトに） */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #FFF8F0;
+    --foreground: #171717;
   }
 }
 
+/* 既存UIの色指定はそのまま活かす */
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===== アニメーション（ローディング猫用） ===== */
+@keyframes bob   { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes tail  { 0%,100% { transform: rotate(0deg) }   50% { transform: rotate(12deg) } }
+@keyframes pawstep {
+  0% { opacity:0; transform: translateY(6px) scale(0.95) }
+  30%{ opacity:1 }
+  100%{ opacity:0; transform: translateY(-6px) scale(1) }
+}
+@keyframes blink { 0%,92%,100% { transform: scaleY(1) } 95% { transform: scaleY(0.05) } }
+
+@utility animate-bob     { animation: bob 1.6s ease-in-out infinite }
+@utility animate-tail    { animation: tail 1.2s ease-in-out infinite; transform-origin: 0 0 }
+@utility animate-pawstep { animation: pawstep 1.4s ease-in-out infinite }
+@utility animate-blink   { animation: blink 3.4s ease-in-out infinite; transform-origin: center }
+
+@utility shadow-soft { box-shadow: 0 10px 30px rgba(250, 218, 221, 0.55) }
+@utility rounded-3xl { border-radius: 1.75rem }
+
+/* ===== 右上ナビが“見えない/薄い”ケースの最小パッチ ===== */
+/* 1) ヘッダー前面（重なり対策） */
+header { position: relative; z-index: 10; }
+
+/* 2) ヘッダー内のテキスト色を“明るい背景向け”に。
+   以前は !important で強制していたが、副作用を減らすため specificity を上げる形に変更。 */
+header nav a,
+header nav button,
+header nav [role="button"] {
+  color: #171717;
+  /* アウトライン系なら枠も薄く */
+  border-color: #EBD6D6;
+}
+
+/* 3) ヘッダ内のアイコンも currentColor に追従 */
+header nav svg { color: currentColor; fill: currentColor; stroke: currentColor; }
+
+/* ===== 黒/濃グレー背景の“パネル内だけ”文字を白に固定（猫選択メニュー等） ===== */
+/* 抜けがちな 950/ slate/ stone も追加しておく */
+:where(
+  .bg-black, .bg-neutral-900, .bg-neutral-950, .bg-neutral-800,
+  .bg-zinc-900, .bg-zinc-800,
+  .bg-slate-900, .bg-slate-800,
+  .bg-stone-900, .bg-stone-800,
+  .bg-gray-900, .bg-gray-800
+) {
+  color: #FAFAFA !important;
+}
+:where(
+  .bg-black, .bg-neutral-900, .bg-neutral-950, .bg-neutral-800,
+  .bg-zinc-900, .bg-zinc-800,
+  .bg-slate-900, .bg-slate-800,
+  .bg-stone-900, .bg-stone-800,
+  .bg-gray-900, .bg-gray-800
+) :is(a, button, span, p, li, label, svg) {
+  color: #FAFAFA !important;
+  fill: currentColor;
+  stroke: currentColor;
+}
+/* === タイトル/ラベルのコントラストを上げる最小パッチ === */
+
+/* ページ見出し（Home/ホーム など）を濃い色に固定 */
+main h1, main h2, main h3, main h4 {
+  color: #171717 !important;
+  opacity: 1 !important;   /* どこかで薄くされていても戻す */
+}
+
+/* “クイックアクション”のような補助ラベルが
+   text-muted-foreground / 中間グレー系クラスになっていても読める濃さに */
+:where(
+  .text-muted-foreground,
+  .text-secondary-foreground,
+  .text-neutral-400, .text-neutral-500,
+  .text-gray-400,   .text-gray-500,
+  .text-zinc-400,   .text-zinc-500,
+  .text-slate-400,  .text-slate-500,
+  .text-stone-400,  .text-stone-500
+) {
+  color: #5A5A5A !important;  /* 既定の前景色に寄せる */
+  opacity: 1 !important;
+}
+/* === ログイン行 & クイックアクションの文字をはっきり見せる最小パッチ === */
+
+/* 小さめテキストや“薄文字用”ユーティリティを、ライト背景向けの濃さに */
+main :is(
+  .text-muted-foreground,
+  .text-secondary-foreground,
+  .text-xs, .text-sm,
+  small
+) {
+  color: #5A5A5A !important; /* やさしい濃グレー */
+  opacity: 1 !important;     /* 親や自身のopacityで薄くされていても戻す */
+}
+
+/* 見出し風のラベル（例: クイックアクション）が薄い時に上書き */
+main :is(h2, h3, h4, .section-title, .label) {
+  color: #171717 !important; /* 見出しはしっかり濃く */
+  opacity: 1 !important;
 }
