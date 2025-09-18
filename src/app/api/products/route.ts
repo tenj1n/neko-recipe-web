@@ -1,3 +1,4 @@
+//src/app/api/products/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db"; // 相対パス調整
 

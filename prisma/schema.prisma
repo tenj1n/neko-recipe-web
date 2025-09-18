@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "binary"
 }
 
@@ -13,8 +13,7 @@ model User {
   email     String   @unique
   password  String
   createdAt DateTime @default(now())
-
-  cats Cat[]
+  cats      Cat[]
 }
 
 enum Activity {
@@ -37,9 +36,10 @@ model Cat {
   allergies  String?
   createdAt  DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id])
-
+  user        User                   @relation(fields: [userId], references: [id])
   preferences IngredientPreference[]
+  meals       Meal[]                 // 既存
+  stoolLogs   StoolLog[]             // ★追加：同日カレンダーで表示する便ログ
 
   @@index([userId])
 }
@@ -54,12 +54,11 @@ model Product {
   source           String   @default("local")
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  
-  @@index([name])
-  @@index([brand])
-  @@index([ingredients_text])
 
-  variants ProductVariant[]
+  variants  ProductVariant[]
+
+  // ★追加：MealItem（Product直付け）の逆参照
+  mealItems MealItem[]   // ←これを足す
 }
 
 enum IngredientLevel {
@@ -73,8 +72,8 @@ model IngredientPreference {
   catId     String
   keyword   String
   level     IngredientLevel
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   cat Cat @relation(fields: [catId], references: [id])
 
@@ -82,32 +81,112 @@ model IngredientPreference {
 }
 
 model ProductVariant {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   productId Int
   form      String
   label     String
   lifeStage String?
-  flavor    String   @default("")
+  flavor    String  @default("")
   features  String?
 
   ingredients_text String @default("")
 
-  proteinMin   Float?
-  fatMin       Float?
-  fiberMax     Float?
-  ashMax       Float?
-  moistureMax  Float?
-  kcalPer100g  Float?
+  // 一般的な保証分析（%）
+  proteinMin  Float?
+  fatMin      Float?
+  fiberMax    Float?
+  ashMax      Float?
+  moistureMax Float?
+
+  kcalPer100g Float?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   product Product @relation(fields: [productId], references: [id])
 
-  @@index([productId])
+  // MealItem からの逆参照
+  mealItems MealItem[]
+
   @@unique([productId, form, label, flavor])
+  @@index([productId])
   @@index([label])
   @@index([flavor])
   @@index([features])
   @@index([ingredients_text])
+}
+
+enum MealSlot {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model Meal {
+  id        Int        @id @default(autoincrement())
+  catId     String
+  cat       Cat        @relation(fields: [catId], references: [id])
+  date      DateTime   // ログ対象日（00:00で統一保存推奨）
+  slot      MealSlot
+  notes     String?
+  items     MealItem[]
+  createdAt DateTime   @default(now())
+
+  // 同一日・同一スロットを1行に集約（カレンダー描画が楽）
+  @@unique([catId, date, slot])
+
+  @@index([catId, date, slot])
+  @@index([date])
+}
+
+model MealItem {
+  id               Int             @id @default(autoincrement())
+  mealId           Int
+  meal             Meal            @relation(fields: [mealId], references: [id])
+
+  productVariantId Int?
+  productVariant   ProductVariant? @relation(fields: [productVariantId], references: [id])
+
+  productId        Int?
+  product          Product?        @relation(fields: [productId], references: [id])
+
+  name             String?
+  kcal             Float?
+  ingredientsText  String?
+  source           String?
+
+  grams            Int
+
+  @@index([productId])
+  @@index([productVariantId])
+}
+
+/* うんちログ（カレンダー同日表示） */
+enum StoolStatus {
+  NONE      // 出ていない
+  NORMAL    // 普通
+  SOFT      // 軟便
+  DIARRHEA  // 下痢（水様）
+  HARD      // 硬い/便秘気味
+}
+
+model StoolLog {
+  id        Int         @id @default(autoincrement())
+  catId     String
+  cat       Cat         @relation(fields: [catId], references: [id])
+  date      DateTime    // 日付（00:00保存推奨）
+  status    StoolStatus // 便性状
+  color     String?     // 例: 黄/茶/黒/緑 など自由入力
+  amount    String?     // 例: 少/普/多
+  mucus     Boolean?    // 粘液の有無
+  blood     Boolean?    // 血の有無
+  note      String?     // メモ
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // 同一日1件に制約（1日に複数回記録したい場合は外してOK）
+  @@unique([catId, date])
+
+  @@index([catId, date])
 }

@@ -1,60 +1,83 @@
-// src/components/ProductCard.tsx
 "use client";
-import React from "react";
-import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { Cat, Activity, Product as P, ProductVariant as V } from "@prisma/client";
-import { useActiveCat } from "@/lib/useActiveCat";
-// ...既存 import
 
-export default function ProductCard({ product }: { product: P & { variants: V[] } }) {
-  const { catId, setCatId } = useActiveCat(); // ★ setCatId も使う
-  const [cat, setCat] = React.useState<Cat | null>(null);
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-  React.useEffect(() => {
-    let abort = false;
-    (async () => {
-      if (!catId) { setCat(null); return; }
-      const r = await fetch(`/api/cat/${catId}`, { cache: "no-store" }).catch(() => null);
-      if (!r || !r.ok) {
-        if (r && r.status === 404) {
-          // 迷子のIDを自動クリア（猫ピッカーが未選択に戻る）
-          setCatId(null);
-        }
-        if (!abort) setCat(null);
-        return;
-      }
-      const c: Cat = await r.json();
-      if (!abort) setCat(c ?? null);
-    })();
-    return () => { abort = true; };
-  }, [catId, setCatId]);
+type Variant = {
+  id: number;
+  label?: string;
+  flavor?: string;
+  form?: string;
+  kcalPer100g?: number | null;
+};
 
-  // ...（中略）...
+type Props = {
+  product: {
+    id: number;
+    name: string;
+    brand?: string;
+    barcode?: string;
+    variants: Variant[];
+  };
+};
+
+export default function ProductCard({ product }: Props) {
+  const sp = useSearchParams();
+  const selectMode = sp.get("select") === "variant";
+  // 安全のため内部パスのみ許可
+  const retRaw = sp.get("return") || "/meals/new";
+  const returnPath = retRaw.startsWith("/") ? retRaw : "/meals/new";
+  const row = sp.get("row") ?? undefined;
+  const grams = sp.get("grams") ?? undefined;
+  const catId = sp.get("catId") ?? undefined;
+  const date = sp.get("date") ?? undefined;
+  const slot = sp.get("slot") ?? undefined;
+
+  function buildReturnUrl(variantId: number) {
+    const baseHasQuery = returnPath.includes("?");
+    const p = new URLSearchParams();
+    p.set("variantId", String(variantId));
+    if (row) p.set("row", row);
+    if (grams) p.set("grams", grams);
+    if (catId) p.set("catId", catId);
+    if (date) p.set("date", date);
+    if (slot) p.set("slot", slot);
+    return `${returnPath}${baseHasQuery ? "&" : "?"}${p.toString()}`;
+  }
 
   return (
-    <div className="rounded-2xl shadow p-4 bg-white space-y-4">
-      <div className="flex gap-4">
-        <div className="w-28 h-28 relative shrink-0 rounded overflow-hidden bg-gray-100">
-          {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.name}
-              fill
-              // これで Console の "fill なのに sizes がない" 警告を解消
-              sizes="(max-width: 640px) 96px, 112px"
-              // LCP 対策：最初のカードなら priority を true にしてOK（任意）
-              priority
-              className="object-cover"
-            />
-          ) : (
-            <div className="w-full h-full grid place-items-center text-gray-400">No Image</div>
-          )}
-        </div>
-        {/* ...既存のヘッダー */}
+    <div className="rounded-xl border p-4 space-y-2">
+      <div className="font-semibold">{product.name}</div>
+      <div className="text-xs opacity-70">
+        {product.brand ? `ブランド: ${product.brand}` : ""}
+        {product.barcode ? `　| バーコード: ${product.barcode}` : ""}
       </div>
 
-      {/* ...既存の内容（給与目安ボックスの条件は cat && v?.kcalPer100g != null のままでOK） */}
+      <ul className="space-y-1">
+        {product.variants.map((v) => (
+          <li
+            key={v.id}
+            className="flex items-center justify-between gap-2 rounded-md border px-2 py-1"
+          >
+            <div className="text-sm">
+              {v.label || "無印"}
+              {v.flavor ? ` / ${v.flavor}` : ""}
+              {v.form ? ` / ${v.form}` : ""}
+              {Number.isFinite(v.kcalPer100g as number) ? `（${v.kcalPer100g} kcal/100g）` : ""}
+            </div>
+
+            {selectMode ? (
+              <Link
+                href={buildReturnUrl(v.id)}
+                className="text-xs rounded-md border px-2 py-1 hover:bg-white/10"
+                title="このバリアントを選んで /meals/new に戻る"
+              >
+                選択して戻る
+              </Link>
+            ) : null}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

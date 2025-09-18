@@ -1,18 +1,24 @@
-import { prisma } from "@/lib/db";
-import { cookies } from "next/headers";
-import CatPicker from "@/components/CatPicker";
+"use client";
 
-export default async function Header() {
-  const ck = await cookies();
-  const activeCatId = ck.get("activeCatId")?.value ?? "";
+import Link from "next/link";
+import CatSwitcher from "@/components/CatSwitcher";
 
-  // TODO: ログインユーザーIDに合わせる（ここでは簡易的に全件）
-  const cats = await prisma.cat.findMany({ select: { id: true, name: true } });
-
+export default function Header() {
   return (
-    <header className="flex items-center justify-between p-3 border-b">
-      <div className="font-semibold">neko-recipe</div>
-      <CatPicker cats={cats} activeCatId={activeCatId} />
+    <header className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+      <Link href="/" className="font-semibold">neko-recipe</Link>
+
+      <div className="flex items-center gap-2">
+        <Link
+          href="/"
+          className="text-sm px-3 py-1.5 rounded border border-zinc-700 hover:bg-zinc-800"
+        >
+          ホーム
+        </Link>
+
+        {/* 右上：ラジオボタン式スイッチャー */}
+        <CatSwitcher />
+      </div>
     </header>
   );
 }

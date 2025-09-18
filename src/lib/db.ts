@@ -1,15 +1,15 @@
 // src/lib/db.ts
 import { PrismaClient } from "@prisma/client";
 
-declare global {
-  // eslint-disable-next-line no-var
-  var prisma: PrismaClient | undefined;
-}
+// ホットリロード時に複数インスタンスを作らないためのガード
+const globalForPrisma = global as unknown as { prisma?: PrismaClient };
 
 export const prisma =
-  global.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-  });
+  globalForPrisma.prisma ?? new PrismaClient({ log: ["error", "warn"] });
 
-if (process.env.NODE_ENV !== "production") global.prisma = prisma;
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
+
+// named と default の両方をエクスポート（import 側のゆらぎに強い）
+export default prisma;

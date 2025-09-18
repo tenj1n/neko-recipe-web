@@ -1,193 +1,87 @@
-// src/lib/nutrition.ts
+// 栄養の簡易計算＆目標値
+import { Activity, Meal, ProductVariant } from "@prisma/client";
 
-/**
- * 解析側の最小栄養セット（合計値）
- * すべて「g」で統一（kcalのみkcal）
- */
-export type Intake = {
-  kcal: number;        // 1日の合計 kcal
-  protein: number;     // g
-  fat: number;         // g
-  carbs: number;       // g
+export type Totals = {
+  kcal: number;
+  protein_g?: number;
+  fat_g?: number;
+  fiber_g?: number;
 };
 
-/**
- * 100gあたりの栄養成分（商品マスタ由来を想定）
- * 例：Open Pet Food Facts / 自前DB からの正規化結果
- */
-export type Per100g = {
-  kcalPer100g: number;
-  protein_g?: number | null;
-  fat_g?: number | null;
-  carbs_g?: number | null;
+export type Targets = {
+  kcal: number;       // その日の目標kcal（MER）
+  protein_g?: number; // 参考値（不明ならundefined）
+  fat_g?: number;     // 参考値（不明ならundefined）
 };
 
-/**
- * RER（安静時必要量）
- */
-export function calcRER(weightKg: number): number {
-  if (!Number.isFinite(weightKg) || weightKg <= 0) throw new Error("体重は正の数で指定してください");
+export function calcRERkg(weightKg: number) {
+  // Resting Energy Requirement
   return 70 * Math.pow(weightKg, 0.75);
 }
 
-/**
- * MER（1日必要量）
- * factor例：去勢済1.2 / 未去勢1.4 / 肥満1.0 など
- */
-export function calcMER(rer: number, factor: number): number {
-  return rer * factor;
+export function activityFactor(a: Activity) {
+  // ざっくりな係数（成猫・去勢済み前提の目安）
+  if (a === "LOW") return 1.2;
+  if (a === "HIGH") return 1.6;
+  return 1.4; // NORMAL
 }
 
-/**
- * シンプルな係数（feeding.tsがある場合はそちら優先でもOK）
- */
-export function simpleFactor({
-  neutered,
-  obese,
-}: {
-  neutered: boolean;
-  obese?: boolean;
-}) {
-  if (obese) return 1.0;
-  return neutered ? 1.2 : 1.4;
+export function kcalFromVariant(variant: ProductVariant | null | undefined, grams: number, fallbackKcal?: number) {
+  if (typeof fallbackKcal === "number") return fallbackKcal;
+  const per100 = variant?.kcalPer100g;
+  if (typeof per100 === "number") return (per100 * grams) / 100;
+  return 0;
 }
 
-/**
- * 栄養ターゲット（目標）生成
- * - kcal は MER をそのまま
- * - マクロ配分は実務向けの「目安」をセット（アプリ内で後から調整可能）
- */
-export function generateTargets(mer: number) {
-  // 配分例：タンパク 30% / 脂質 25% / 炭水化物 45%
+export function macroFromVariantPercent(percent: number | null | undefined, grams: number) {
+  // 例: proteinMin=30(%) × 50g => 15g
+  if (typeof percent !== "number") return undefined;
+  return (percent / 100) * grams;
+}
+
+export function summarizeDay(meals: Array<Meal & { items: any[] }>): Totals {
+  let kcal = 0;
+  let protein_g: number | undefined;
+  let fat_g: number | undefined;
+  let fiber_g: number | undefined;
+
+  for (const m of meals) {
+    for (const it of m.items) {
+      const grams: number = Number(it.grams) || 0;
+      const v: ProductVariant | null = it.productVariant ?? null;
+
+      // kcal
+      kcal += kcalFromVariant(v, grams, typeof it.kcal === "number" ? it.kcal : undefined);
+
+      // macros（%が入っていれば推定）
+      const p = macroFromVariantPercent(v?.proteinMin ?? null, grams);
+      const f = macroFromVariantPercent(v?.fatMin ?? null, grams);
+      const fi = macroFromVariantPercent(v?.fiberMax ?? null, grams);
+
+      protein_g = p != null ? (protein_g ?? 0) + p : protein_g;
+      fat_g = f != null ? (fat_g ?? 0) + f : fat_g;
+      fiber_g = fi != null ? (fiber_g ?? 0) + fi : fiber_g;
+    }
+  }
+  return { kcal: Math.round(kcal), protein_g, fat_g, fiber_g };
+}
+
+export function buildTargets(params: { weightKg: number; activity: Activity }) : Targets {
+  const rer = calcRERkg(params.weightKg);
+  const kcal = Math.round(rer * activityFactor(params.activity));
+
+  // タンパク質/脂質はざっくりの参考値（不足判定のヒント用）
+  // 目安: たんぱく質 5.2g/kg体重/日, 脂質 2.0g/kg体重/日（シンプルな参考）
+  const protein_g = Math.round(params.weightKg * 5.2 * 10) / 10;
+  const fat_g = Math.round(params.weightKg * 2.0 * 10) / 10;
+
+  return { kcal, protein_g, fat_g };
+}
+
+export function diffAgainstTargets(t: Totals, target: Targets) {
   return {
-    kcal: mer,
-    protein: (mer * 0.30) / 4, // g
-    fat:     (mer * 0.25) / 9, // g
-    carbs:   (mer * 0.45) / 4, // g
+    kcal: t.kcal - target.kcal, // +過剰 / -不足
+    protein_g: t.protein_g != null && target.protein_g != null ? t.protein_g - target.protein_g : undefined,
+    fat_g: t.fat_g != null && target.fat_g != null ? t.fat_g - target.fat_g : undefined,
   };
 }
-
-/**
- * 単一アイテムの摂取栄養を計算（与えたグラムから）
- */
-export function intakeFromServing(per100g: Per100g, servingGrams: number): Intake {
-  const ratio = servingGrams / 100;
-  return {
-    kcal:    per100g.kcalPer100g * ratio,
-    protein: (per100g.protein_g ?? 0) * ratio,
-    fat:     (per100g.fat_g ?? 0) * ratio,
-    carbs:   (per100g.carbs_g ?? 0) * ratio,
-  };
-}
-
-/**
- * 複数アイテムの摂取を合算
- */
-export function sumIntakes(items: Intake[]): Intake {
-  return items.reduce<Intake>((acc, v) => ({
-    kcal: acc.kcal + (v.kcal || 0),
-    protein: acc.protein + (v.protein || 0),
-    fat: acc.fat + (v.fat || 0),
-    carbs: acc.carbs + (v.carbs || 0),
-  }), { kcal: 0, protein: 0, fat: 0, carbs: 0 });
-}
-
-/**
- * 摂取栄養（合計）とターゲットの差分
- */
-export function compareNutrition(
-  intake: Intake,
-  targets: Intake
-) {
-  return {
-    kcal:    intake.kcal    - targets.kcal,
-    protein: intake.protein - targets.protein,
-    fat:     intake.fat     - targets.fat,
-    carbs:   intake.carbs   - targets.carbs,
-  };
-}
-
-/**
- * 不足/過多の判定
- * threshold：%（例えば20 → ±20%超えで不足/過剰）
- */
-export function judgeBalance(
-  diff: ReturnType<typeof compareNutrition>,
-  targets: Intake,
-  threshold = 20
-): Record<keyof Intake, "不足" | "過剰" | "適正"> {
-  const result: Record<keyof Intake, "不足" | "過剰" | "適正"> = {
-    kcal: "適正",
-    protein: "適正",
-    fat: "適正",
-    carbs: "適正",
-  };
-
-  (Object.keys(diff) as (keyof Intake)[]).forEach((key) => {
-    const t = targets[key];
-    if (!t || t <= 0) return;
-    const pct = (diff[key] / t) * 100;
-    if (pct > threshold) result[key] = "過剰";
-    else if (pct < -threshold) result[key] = "不足";
-  });
-
-  return result;
-}
-
-/**
- * LLMに渡すレシピ生成プロンプト（例）
- * - 不足側を主に補う提案を期待
- * - アレルギー（除外食材）を反映
- */
-export function buildRecipePrompt({
-  diff,
-  judgment,
-  allergies,
-}: {
-  diff: ReturnType<typeof compareNutrition>;
-  judgment: Record<keyof Intake, "不足" | "過剰" | "適正">;
-  allergies: string[];
-}) {
-  const focus = (Object.entries(judgment) as [keyof Intake, string][])
-    .filter(([, v]) => v === "不足")
-    .map(([k]) => k)
-    .join(", ");
-
-  return `
-あなたは猫用レシピを提案するアシスタントです。
-次の栄養バランスの不足を主に補う簡単な献立を3案提案してください。
-
-不足/過剰 差分: ${JSON.stringify(diff, null, 2)}
-判定: ${JSON.stringify(judgment, null, 2)}
-重点的に補う栄養: ${focus || "特になし（バランス維持）"}
-除外すべき食材（アレルギー）: ${allergies.join(", ") || "なし"}
-
-制約:
-- 猫が安全に食べられる食材のみ（加熱・無味・骨/皮なし）
-- 1回の分量は数グラム〜10g程度に留める
-- 子猫/シニアなど年齢や消化を考慮して提案
-- 作り方は簡潔に
-`;
-}
-
-/** 使い方の一例（サービス層 or サーバーアクション側で）
- * 
- * import { calcMER as calcMERFeeding } from "@/lib/feeding"; // feeding.tsのMER
- * 
- * // プロフィールから必要カロリーを出す（feeding.ts を優先）
- * const mer = calcMERFeeding({
- *   weightKg: 4,
- *   ageYears: 3,
- *   sex: "MALE",
- *   activity: "MEDIUM",
- *   neutered: true,
- * });
- * 
- * const targets = generateTargets(mer);
- * const breakfast = intakeFromServing({ kcalPer100g: 360, protein_g: 32, fat_g: 14, carbs_g: 40 }, 35);
- * const dinner    = intakeFromServing({ kcalPer100g: 360, protein_g: 32, fat_g: 14, carbs_g: 40 }, 30);
- * const intake = sumIntakes([breakfast, dinner]);
- * const diff = compareNutrition(intake, targets);
- * const judgment = judgeBalance(diff, targets, 20);
- * const prompt = buildRecipePrompt({ diff, judgment, allergies: ["とうもろこし"] });
- */
