@@ -1,3 +1,4 @@
+// src/app/page.tsx
 import { getServerSession } from "next-auth";
 import HomeClient from "@/components/home/HomeClient";
 

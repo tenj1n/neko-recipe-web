@@ -66,19 +66,29 @@ export default function CalendarMain() {
   const moveMonth = (delta: number) =>
     setCursor((d) => new Date(d.getFullYear(), d.getMonth() + delta, 1));
 
-  const firstWeekday = start.getDay();                  // 0..6
-  const total        = end.getDate();                   // 今月の日数
+  const firstWeekday = start.getDay();
+  const total        = end.getDate();
   const blanks       = Array.from({ length: firstWeekday });
 
   return (
     <div className="space-y-4">
-      {/* 月の操作 */}
+      {/* 月の操作（←ピル型＆肉球） */}
       <div className="flex items-center gap-2">
-        <button className="px-3 py-1 rounded border" onClick={() => moveMonth(-1)}>前月</button>
+        <button
+          className="nav-pill focus-ring tap-target paw-hover text-sm"
+          onClick={() => moveMonth(-1)}
+        >
+          前月
+        </button>
         <div className="text-lg font-semibold">
           {cursor.getFullYear()}年 {cursor.getMonth() + 1}月
         </div>
-        <button className="px-3 py-1 rounded border" onClick={() => moveMonth(1)}>次月</button>
+        <button
+          className="nav-pill focus-ring tap-target paw-hover text-sm"
+          onClick={() => moveMonth(1)}
+        >
+          次月
+        </button>
       </div>
 
       {/* 曜日ヘッダ */}
@@ -88,7 +98,7 @@ export default function CalendarMain() {
         ))}
       </div>
 
-      {/* 月グリッド（先頭オフセット + 日） */}
+      {/* 月グリッド */}
       <div className="grid grid-cols-7 gap-2">
         {blanks.map((_,i) => <div key={`b${i}`} />)}
 
@@ -98,7 +108,6 @@ export default function CalendarMain() {
           const info = daysMap.get(key);
           const hasData = !!info;
 
-          // セル内サマリ
           const stoolBadge = info?.hasStool && info.stool?.status
             ? STOOL_EMOJI[info.stool.status] ?? "💩"
             : null;
@@ -106,15 +115,13 @@ export default function CalendarMain() {
           const mealBadges = Object.entries(SLOT_LABEL_JA)
             .filter(([slot]) => (info?.slots as any)?.[slot]?.items?.length || (info?.slots as any)?.[slot]?.notes)
             .map(([_, label]) => label)
-            .slice(0, 3); // 表示しすぎ防止
+            .slice(0, 3);
 
           return (
             <button
               key={key}
-              className={
-                "text-left p-3 rounded border dark:border-zinc-700 bg-white/70 dark:bg-zinc-900/40 " +
-                "hover:bg-white hover:dark:bg-zinc-800"
-              }
+              // ←黒背景/ダーク系を外し、明るいカード風に
+              className="text-left p-3 rounded-xl border border-[rgba(122,93,82,0.12)] bg-white hover:shadow-soft transition"
               onClick={() => setEditingYmd(key)}
             >
               <div className="flex items-center justify-between">
@@ -127,7 +134,7 @@ export default function CalendarMain() {
                   <div className="flex gap-1 flex-wrap text-[11px] opacity-80">
                     {mealBadges.length > 0
                       ? mealBadges.map((t, idx) => (
-                          <span key={idx} className="px-1.5 py-[1px] rounded bg-zinc-200/70 dark:bg-zinc-800/70">
+                          <span key={idx} className="px-1.5 py-[1px] rounded bg-zinc-200/70">
                             🍚{t}
                           </span>
                         ))

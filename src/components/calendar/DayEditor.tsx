@@ -1,9 +1,6 @@
-// src/components/calendar/DayEditor.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import type { DaySummary } from "./types";
-import { SLOTS, SLOT_LABEL_JA, type Slot } from "./types";
 
 type StoolStatus = "NONE" | "NORMAL" | "SOFT" | "DIARRHEA" | "HARD";
 const STOOL_STATUSES = [
@@ -24,16 +21,17 @@ type ItemDraft = {
   source?: string | null;
 };
 
-const inputBaseCls =
-  "block w-full mt-1 border rounded px-3 py-2 bg-white text-gray-900 placeholder-gray-400 border-zinc-300 " +
-  "dark:bg-zinc-900/60 dark:text-gray-100 dark:placeholder-gray-500 dark:border-zinc-700";
-
 type Nutrition = {
   totals: { kcal: number; protein_g?: number; fat_g?: number; fiber_g?: number };
   targets: { kcal: number; protein_g?: number; fat_g?: number };
   diff: { kcal: number; protein_g?: number; fat_g?: number };
   explanation?: string;
 };
+
+import type { DaySummary } from "./types";
+import { SLOTS, SLOT_LABEL_JA, type Slot } from "./types";
+
+const inputCute = "input-cute w-full mt-1";
 
 export default function DayEditor({
   dateYmd,
@@ -167,16 +165,16 @@ export default function DayEditor({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-50 flex items-end sm:items-center justify-center">
       <div
-        className="bg-white dark:bg-zinc-900 text-gray-900 dark:text-gray-100
-                   w-full sm:w-[980px] max-h-[90vh] rounded-t-2xl sm:rounded-2xl
-                   shadow-lg overflow-auto"
+        className="bg-white text-[#171717] w-full sm:w-[980px] max-h-[90vh]
+                   rounded-t-2xl sm:rounded-2xl shadow-soft overflow-auto"
       >
-        <div className="p-4 border-b dark:border-zinc-700 flex items-center justify-between">
-          <h2 className="text-xl font-semibold">{dateYmd} の記録</h2>
+        {/* ヘッダー */}
+        <div className="p-4 border-b border-zinc-200 flex items-center justify-between">
+          <h2 className="text-xl font-semibold"> {dateYmd} の記録</h2>
           <button
-            className="px-3 py-2 rounded bg-gray-100 dark:bg-zinc-800 border dark:border-zinc-700"
+            className="nav-pill focus-ring tap-target paw-hover text-sm"
             onClick={() => onClose(changed)}
           >
             閉じる
@@ -186,10 +184,10 @@ export default function DayEditor({
         {/* トースト */}
         {toast && (
           <div
-            className={`mx-4 mt-3 px-3 py-2 rounded text-sm ${
+            className={`mx-4 mt-3 px-3 py-2 rounded text-sm border ${
               toast.kind === "success"
-                ? "bg-emerald-600/15 text-emerald-200 border border-emerald-700"
-                : "bg-rose-600/15 text-rose-200 border border-rose-700"
+                ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                : "bg-rose-50 text-rose-900 border-rose-200"
             }`}
           >
             {toast.text}
@@ -201,30 +199,24 @@ export default function DayEditor({
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab("stool")}
-              className={`px-3 py-1.5 rounded border text-sm ${
-                activeTab === "stool"
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-gray-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700"
+              className={`nav-pill focus-ring tap-target ${
+                activeTab === "stool" ? "btn-primary-cute" : ""
               }`}
             >
               うんちログ
             </button>
             <button
               onClick={() => setActiveTab("meal")}
-              className={`px-3 py-1.5 rounded border text-sm ${
-                activeTab === "meal"
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-gray-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700"
+              className={`nav-pill focus-ring tap-target ${
+                activeTab === "meal" ? "btn-primary-cute" : ""
               }`}
             >
               食事入力
             </button>
             <button
               onClick={() => fetchNutrition().then(() => setActiveTab("nutrition"))}
-              className={`px-3 py-1.5 rounded border text-sm ${
-                activeTab === "nutrition"
-                  ? "bg-violet-600 text-white border-violet-600"
-                  : "bg-gray-100 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700"
+              className={`nav-pill focus-ring tap-target ${
+                activeTab === "nutrition" ? "btn-primary-cute" : ""
               }`}
             >
               栄養サマリ
@@ -236,13 +228,13 @@ export default function DayEditor({
         <div className="p-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* うんちログ */}
           {activeTab === "stool" && (
-            <section className="border rounded-xl p-4 bg-white dark:bg-zinc-800 dark:border-zinc-700">
+            <section className="border border-zinc-200 rounded-xl p-4 bg-white">
               <h3 className="font-semibold mb-3">うんちログ</h3>
               <div className="grid grid-cols-2 gap-3">
                 <label className="text-sm">
                   状態
                   <select
-                    className={inputBaseCls}
+                    className={inputCute}
                     value={stool.status}
                     onChange={(e) => {
                       setStool((s) => ({ ...s, status: e.target.value as StoolStatus }));
@@ -260,7 +252,7 @@ export default function DayEditor({
                 <label className="text-sm">
                   色
                   <input
-                    className={inputBaseCls}
+                    className={inputCute}
                     placeholder="黄土色 など"
                     value={stool.color ?? ""}
                     onChange={(e) => {
@@ -273,7 +265,7 @@ export default function DayEditor({
                 <label className="text-sm">
                   量
                   <input
-                    className={inputBaseCls}
+                    className={inputCute}
                     placeholder="少/普/多 など"
                     value={stool.amount ?? ""}
                     onChange={(e) => {
@@ -311,7 +303,7 @@ export default function DayEditor({
                 <label className="col-span-2 text-sm">
                   メモ
                   <textarea
-                    className={inputBaseCls}
+                    className={`${inputCute} min-h-[100px]`}
                     rows={3}
                     value={stool.note ?? ""}
                     onChange={(e) => {
@@ -324,7 +316,7 @@ export default function DayEditor({
 
               <div className="mt-3">
                 <button
-                  className="px-4 py-2 rounded bg-emerald-600 text-white"
+                  className="btn-primary-cute focus-ring tap-target"
                   onClick={async () => {
                     try {
                       await saveStool();
@@ -343,15 +335,15 @@ export default function DayEditor({
 
           {/* 食事入力 */}
           {activeTab === "meal" && (
-            <section className="border rounded-xl p-4 bg-white dark:bg-zinc-800 dark:border-zinc-700">
+            <section className="border border-zinc-200 rounded-xl p-4 bg-white">
               <h3 className="font-semibold mb-3">食事スロット</h3>
               <div className="space-y-6">
                 {SLOTS.map((slot) => (
-                  <div key={slot} className="border rounded-lg p-3 dark:border-zinc-700">
+                  <div key={slot} className="border border-zinc-200 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-medium">{SLOT_LABEL_JA[slot]}</div>
                       <button
-                        className="px-3 py-1.5 rounded bg-blue-600 text-white"
+                        className="btn-primary-cute focus-ring tap-target"
                         onClick={async () => {
                           try {
                             await saveSlot(slot);
@@ -368,11 +360,9 @@ export default function DayEditor({
                       </button>
                     </div>
 
-                    <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      メモ
-                    </label>
+                    <label className="block text-xs text-[#5A5A5A] mb-1">メモ</label>
                     <input
-                      className={inputBaseCls}
+                      className={inputCute}
                       placeholder="食いつき良い / 吐き戻しなし など"
                       value={slotNotes[slot] ?? ""}
                       onChange={(e) => {
@@ -381,11 +371,11 @@ export default function DayEditor({
                       }}
                     />
 
-                    <div className="space-y-1 mt-2">
+                    <div className="space-y-2 mt-2">
                       {(slotItems[slot] ?? []).map((it, idx) => (
                         <div key={idx} className="flex items-center gap-2">
                           <input
-                            className={`${inputBaseCls} w-[50%]`}
+                            className={`${inputCute} w-[50%]`}
                             placeholder="手入力名（例：ゆでささみ）"
                             value={it.name ?? ""}
                             onChange={(e) => {
@@ -400,7 +390,7 @@ export default function DayEditor({
                           />
                           <input
                             type="number"
-                            className={`${inputBaseCls} w-[20%]`}
+                            className={`${inputCute} w-[20%]`}
                             placeholder="g"
                             value={Number.isFinite(it.grams) ? it.grams : 0}
                             onChange={(e) => {
@@ -415,7 +405,7 @@ export default function DayEditor({
                           />
                           <input
                             type="number"
-                            className={`${inputBaseCls} w-[20%]`}
+                            className={`${inputCute} w-[20%]`}
                             placeholder="kcal(任意)"
                             value={it.kcal ?? ""}
                             onChange={(e) => {
@@ -429,7 +419,7 @@ export default function DayEditor({
                             }}
                           />
                           <button
-                            className="px-2 py-1 rounded bg-gray-100 dark:bg-zinc-700 border dark:border-zinc-600"
+                            className="btn-cute focus-ring tap-target"
                             onClick={() => {
                               setSlotItems((s) => {
                                 const arr = [...(s[slot] ?? [])];
@@ -447,7 +437,7 @@ export default function DayEditor({
 
                     <div className="mt-2 flex items-center gap-2">
                       <button
-                        className="px-3 py-1.5 rounded bg-gray-100 dark:bg-zinc-700 border dark:border-zinc-600"
+                        className="btn-cute focus-ring tap-target"
                         onClick={() => {
                           setSlotItems((s) => ({
                             ...s,
@@ -458,7 +448,7 @@ export default function DayEditor({
                       >
                         + アイテム追加（手入力）
                       </button>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
+                      <span className="text-xs text-[#9B8C86]">
                         ※ 商品選択やバーコードは後で差し込み可
                       </span>
                     </div>
@@ -470,11 +460,11 @@ export default function DayEditor({
 
           {/* 栄養サマリ */}
           {activeTab === "nutrition" && (
-            <section className="border rounded-xl p-4 bg-white dark:bg-zinc-800 dark:border-zinc-700 lg:col-span-2">
+            <section className="border border-zinc-200 rounded-xl p-4 bg-white lg:col-span-2">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold">栄養サマリ（{dateYmd}）</h3>
                 <button
-                  className="px-3 py-1.5 rounded bg-gray-100 dark:bg-zinc-700 border dark:border-zinc-600 text-sm"
+                  className="btn-cute focus-ring tap-target text-sm"
                   onClick={() => fetchNutrition()}
                 >
                   再計算
@@ -482,7 +472,7 @@ export default function DayEditor({
               </div>
 
               {loadingNut ? (
-                <div className="text-sm text-gray-500">計算中…</div>
+                <div className="text-sm text-[#5A5A5A]">計算中…</div>
               ) : nutrition ? (
                 <>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -502,25 +492,25 @@ export default function DayEditor({
                   </div>
 
                   {nutrition.explanation ? (
-                    <div className="mt-4 p-3 rounded bg-violet-50 text-violet-900 dark:bg-violet-900/20 dark:text-violet-200">
+                    <div className="mt-4 p-3 rounded bg-violet-50 text-violet-900">
                       <div className="text-sm whitespace-pre-wrap">{nutrition.explanation}</div>
                     </div>
                   ) : (
-                    <div className="mt-4 text-xs text-gray-500">
+                    <div className="mt-4 text-xs text-[#5A5A5A]">
                       ※ AI解説を有効にするには <code>OPENAI_API_KEY</code> を設定してください。
                     </div>
                   )}
                 </>
               ) : (
-                <div className="text-sm text-gray-500">この日の記録がまだありません。</div>
+                <div className="text-sm text-[#5A5A5A]">この日の記録がまだありません。</div>
               )}
             </section>
           )}
         </div>
 
-        <div className="p-4 border-t dark:border-zinc-700 text-right">
+        <div className="p-4 border-t border-zinc-200 text-right">
           <button
-            className="px-4 py-2 rounded bg-gray-200 dark:bg-zinc-700 border dark:border-zinc-600 mr-2"
+            className="nav-pill focus-ring tap-target"
             onClick={() => onClose(changed)}
           >
             閉じる
@@ -549,14 +539,14 @@ function CardStat({
 }) {
   const toneCls =
     tone === "ok"
-      ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-200"
+      ? "bg-emerald-50 text-emerald-900"
       : tone === "warn"
-      ? "bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200"
+      ? "bg-amber-50 text-amber-900"
       : tone === "bad"
-      ? "bg-rose-50 text-rose-900 dark:bg-rose-900/20 dark:text-rose-200"
-      : "bg-gray-50 text-gray-900 dark:bg-zinc-900/40 dark:text-gray-100";
+      ? "bg-rose-50 text-rose-900"
+      : "bg-gray-50 text-gray-900";
   return (
-    <div className={`p-3 rounded border dark:border-zinc-700 ${toneCls}`}>
+    <div className={`p-3 rounded border border-zinc-200 ${toneCls}`}>
       <div className="text-xs opacity-70">{label}</div>
       <div className="text-lg font-semibold">{value}</div>
     </div>

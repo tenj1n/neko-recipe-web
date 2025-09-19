@@ -1,4 +1,4 @@
-// src/app/layout.tsx
+/* src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -29,6 +29,59 @@ export default function RootLayout({
         <Providers>
           <div className="min-h-dvh flex flex-col">
             <Header />
+            //背景の猫の足跡（6個・ずっと歩く
+            <div className="decor-paws" aria-hidden>
+              <span className="paw" style={{ left: "10%", top: "22%" }}>🐾</span>
+              <span className="paw" style={{ left: "28%", top: "64%" }}>🐾</span>
+              <span className="paw" style={{ left: "46%", top: "32%" }}>🐾</span>
+              <span className="paw" style={{ left: "62%", top: "76%" }}>🐾</span>
+              <span className="paw" style={{ left: "74%", top: "18%" }}>🐾</span>
+              <span className="paw" style={{ left: "86%", top: "50%" }}>🐾</span>
+            </div>
+            <main className="p-4">{children}</main>
+          </div>
+        </Providers>
+      </body>
+    </html>
+  );
+}
+*/
+// src/app/layout.tsx
+import "./globals.css";
+
+// ★追加：Header を import
+import Header from "@/components/Header";
+
+// ★追加：Providers を import（デフォルト輸出の場合）
+import Providers from "./providers";
+// もし providers.tsx が named export の場合は↑をコメントアウトして↓を使ってください
+// import { Providers } from "./providers";
+
+// ★追加：フォントを定義（geistSans / geistMono）
+import { Geist, Geist_Mono } from "next/font/google";
+const geistSans = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
+  return (
+    <html lang="ja">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <Providers>
+          <div className="min-h-dvh flex flex-col">
+            <Header />
+
+            {/* 背景の猫の足跡（6個・一足ずつ“トン・トン”で常時アニメ） */}
+            <div className="decor-paws" aria-hidden>
+              <span className="paw" style={{ left: "10%", top: "22%" }}>🐾</span>
+              <span className="paw" style={{ left: "28%", top: "64%" }}>🐾</span>
+              <span className="paw" style={{ left: "46%", top: "32%" }}>🐾</span>
+              <span className="paw" style={{ left: "62%", top: "76%" }}>🐾</span>
+              <span className="paw" style={{ left: "74%", top: "18%" }}>🐾</span>
+              <span className="paw" style={{ left: "86%", top: "50%" }}>🐾</span>
+            </div>
+
             <main className="p-4">{children}</main>
           </div>
         </Providers>

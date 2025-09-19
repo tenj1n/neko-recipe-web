@@ -1,9 +1,10 @@
+/* src/app/globals.css */
 @import "tailwindcss";
 
 /* === 背景だけクリーム固定（他は触らない） ========================== */
 :root {
-  --background: #FFF8F0;   /* ← 背景だけ変更 */
-  --foreground: #171717;   /* ← 元のまま（見出し・文字色は従来通り） */
+  --background: #FFF8F0;  /* 背景のみ変更 */
+  --foreground: #171717;  /* 文字は既定の濃い色 */
 }
 
 @theme inline {
@@ -12,7 +13,7 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* 可愛い系トークン（ローディング猫などで使用） */
+  /* かわいい系トークン（ローディング猫などで使用） */
   --color-cream: #FFF8F0;
   --color-pinkpaw: #FADADD;
   --color-pawBrown: #7A5D52;
@@ -56,78 +57,204 @@ body {
 /* 1) ヘッダー前面（重なり対策） */
 header { position: relative; z-index: 10; }
 
-/* 2) ヘッダー内のテキスト色を“明るい背景向け”に。
-   以前は !important で強制していたが、副作用を減らすため specificity を上げる形に変更。 */
+/* 2) ヘッダー内のテキスト色を“明るい背景向け”に */
 header nav a,
 header nav button,
 header nav [role="button"] {
   color: #171717;
-  /* アウトライン系なら枠も薄く */
-  border-color: #EBD6D6;
+  border-color: #EBD6D6;   /* アウトライン系の枠をうっすら見せる */
 }
 
 /* 3) ヘッダ内のアイコンも currentColor に追従 */
 header nav svg { color: currentColor; fill: currentColor; stroke: currentColor; }
 
-/* ===== 黒/濃グレー背景の“パネル内だけ”文字を白に固定（猫選択メニュー等） ===== */
-/* 抜けがちな 950/ slate/ stone も追加しておく */
+/* ===== 濃色パネル内は白文字（猫選択メニュー等） ===== */
 :where(
-  .bg-black, .bg-neutral-900, .bg-neutral-950, .bg-neutral-800,
+  .bg-black, .bg-neutral-950, .bg-neutral-900, .bg-neutral-800,
   .bg-zinc-900, .bg-zinc-800,
   .bg-slate-900, .bg-slate-800,
   .bg-stone-900, .bg-stone-800,
   .bg-gray-900, .bg-gray-800
-) {
-  color: #FAFAFA !important;
-}
+) { color: #FAFAFA !important; }
 :where(
-  .bg-black, .bg-neutral-900, .bg-neutral-950, .bg-neutral-800,
+  .bg-black, .bg-neutral-950, .bg-neutral-900, .bg-neutral-800,
   .bg-zinc-900, .bg-zinc-800,
   .bg-slate-900, .bg-slate-800,
   .bg-stone-900, .bg-stone-800,
   .bg-gray-900, .bg-gray-800
 ) :is(a, button, span, p, li, label, svg) {
-  color: #FAFAFA !important;
-  fill: currentColor;
-  stroke: currentColor;
-}
-/* === タイトル/ラベルのコントラストを上げる最小パッチ === */
-
-/* ページ見出し（Home/ホーム など）を濃い色に固定 */
-main h1, main h2, main h3, main h4 {
-  color: #171717 !important;
-  opacity: 1 !important;   /* どこかで薄くされていても戻す */
+  color: #FAFAFA !important; fill: currentColor; stroke: currentColor;
 }
 
-/* “クイックアクション”のような補助ラベルが
-   text-muted-foreground / 中間グレー系クラスになっていても読める濃さに */
+/* ===== 見出し／薄文字のコントラスト補正（ライト背景向け） ===== */
+main :is(h1,h2,h3,h4,.section-title,.label) { color:#171717 !important; opacity:1 !important; }
+
+/* よくある“薄文字”ユーティリティを読みやすい濃さに */
 :where(
-  .text-muted-foreground,
-  .text-secondary-foreground,
+  .text-muted-foreground, .text-secondary-foreground,
   .text-neutral-400, .text-neutral-500,
   .text-gray-400,   .text-gray-500,
   .text-zinc-400,   .text-zinc-500,
   .text-slate-400,  .text-slate-500,
-  .text-stone-400,  .text-stone-500
-) {
-  color: #5A5A5A !important;  /* 既定の前景色に寄せる */
-  opacity: 1 !important;
-}
-/* === ログイン行 & クイックアクションの文字をはっきり見せる最小パッチ === */
+  .text-stone-400,  .text-stone-500,
+  .text-xs, .text-sm, small
+) { color:#5A5A5A !important; opacity:1 !important; }
 
-/* 小さめテキストや“薄文字用”ユーティリティを、ライト背景向けの濃さに */
-main :is(
-  .text-muted-foreground,
-  .text-secondary-foreground,
-  .text-xs, .text-sm,
-  small
-) {
-  color: #5A5A5A !important; /* やさしい濃グレー */
-  opacity: 1 !important;     /* 親や自身のopacityで薄くされていても戻す */
+/* ===== Cute UI ユーティリティ（追記だけで使える） ===== */
+/* フォーカス見える化 */
+.focus-ring{ outline: none; }
+.focus-ring:focus-visible{
+  box-shadow: 0 0 0 3px rgba(250,218,221,.9), 0 0 0 1px rgba(122,93,82,.4) inset;
+  transition: box-shadow .15s ease;
+}
+/* 押しやすいタップ領域 */
+.tap-target{ min-height:44px; padding:8px 12px; }
+
+/* 右上ナビ／リンクの“ピル型” */
+.nav-pill{
+  background:#fff; border:1px solid #EBD6D6; border-radius:9999px;
+  padding:6px 12px; color:#171717; display:inline-flex; align-items:center; gap:6px;
+  transition: box-shadow .15s ease, transform .12s ease;
+}
+.nav-pill:hover{ box-shadow:0 6px 20px rgba(250,218,221,.55); transform: translateY(-1px); }
+
+/* クイックアクション系ボタン */
+.btn-cute{
+  background:#fff; border:1px solid #EBD6D6; color:#171717;
+  border-radius:14px; padding:10px 14px; line-height:1.2;
+  transition: box-shadow .15s ease, transform .12s ease, background-color .15s ease;
+}
+.btn-cute:hover{ box-shadow:0 8px 24px rgba(250,218,221,.55); transform: translateY(-1px); }
+.btn-cute:active{ transform: translateY(0); }
+.btn-primary-cute{ background:#FADADD; color:#5A3E3A; border:1px solid rgba(122,93,82,.25); }
+
+/* カード（ホームの四角たち） */
+.card-cute{
+  background:#fff; border:1px solid rgba(122,93,82,.12);
+  border-radius:20px; box-shadow:0 10px 30px rgba(250,218,221,.35);
+}
+.hover-lift{ transition: box-shadow .15s ease, transform .12s ease; }
+.hover-lift:hover{ transform: translateY(-2px); box-shadow:0 18px 36px rgba(250,218,221,.55); }
+
+/* 入力 */
+.input-cute{
+  background:#fff; border:1px solid #EBD6D6; border-radius:14px; padding:10px 12px; color:#171717;
+}
+.input-cute::placeholder{ color:#9B8C86; }
+
+/* 見出し */
+.section-title{ color:#171717; font-weight:800; letter-spacing:.02em; }
+
+/* ちょい猫：ホバーで肉球をぽん */
+.paw-hover{ position:relative; overflow:visible; }
+.paw-hover::after{
+  content:'🐾'; position:absolute; right:-6px; top:-8px; opacity:0;
+  transform: translateY(4px) scale(.9) rotate(-10deg); pointer-events:none;
+  transition: opacity .2s ease, transform .2s ease;
+}
+.paw-hover:hover::after{ opacity:1; transform: translateY(0) scale(1) rotate(-6deg); }
+
+/* カードの上に“猫耳”（とんがり＋薄ピンク） */
+.card-ears{ position:relative; }
+.card-ears::before, .card-ears::after{
+  content:''; position:absolute; top:-14px; width:0; height:0;
+  border-left:13px solid transparent; border-right:13px solid transparent;
+  border-bottom:28px solid #FFE6EC; /* 視認性UP */
+  filter: drop-shadow(0 1px 0 #EBD6D6) drop-shadow(0 4px 10px rgba(250,218,221,.30));
+}
+.card-ears::before{ left:18px;  transform: rotate(-14deg); }
+.card-ears::after { right:18px; transform: rotate(14deg); }
+
+/* === 背景の足跡（6個・ずっと歩く／一足ずつ“トン・トン”） =================== */
+.decor-paws{
+  position: fixed; inset: 0; pointer-events: none;
+  font-size: 42px; opacity: 1; z-index: 0; /* 必要に応じて 0〜3 で調整 */
+}
+.decor-paws .paw{
+  position: absolute; opacity: .18;
+  animation: var(--anim, pawStepL) var(--dur,1.9s) ease-in-out infinite alternate;
+  will-change: transform;
+}
+/* 偶数=右足（交互に見える） */
+.decor-paws .paw:nth-child(even){ --anim: pawStepR; }
+/* 歩くテンポにばらつき */
+.decor-paws .paw:nth-child(1){ --dur:1.6s; animation-delay: .0s; }
+.decor-paws .paw:nth-child(2){ --dur:1.8s; animation-delay: .2s; }
+.decor-paws .paw:nth-child(3){ --dur:2.0s; animation-delay: .1s; }
+.decor-paws .paw:nth-child(4){ --dur:1.7s; animation-delay: .3s; }
+.decor-paws .paw:nth-child(5){ --dur:1.9s; animation-delay: .15s; }
+.decor-paws .paw:nth-child(6){ --dur:2.1s; animation-delay: .25s; }
+
+/* 一足ずつ：トン→ふわ→トン（左右で回転方向を変える） */
+@keyframes pawStepL{
+  0%,35%   { transform: translateY(6px) scale(.94) rotate(-12deg); }
+  50%      { transform: translateY(0)   scale(1.00) rotate(-6deg); }
+  65%,100% { transform: translateY(6px) scale(.94) rotate(-12deg); }
+}
+@keyframes pawStepR{
+  0%,35%   { transform: translateY(6px) scale(.94) rotate(12deg); }
+  50%      { transform: translateY(0)   scale(1.00) rotate(6deg); }
+  65%,100% { transform: translateY(6px) scale(.94) rotate(12deg); }
+}
+/* === Header 右上ナビの統一スタイル（ホームと同じ“ピル型”にする） === */
+header .nav-right :is(a, button, [role="button"]) {
+  background: #fff;
+  border: 1px solid #EBD6D6;
+  border-radius: 9999px;
+  padding: 6px 12px;
+  color: #171717;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px; /* ボタン高さを寄せる */
+  transition: box-shadow .15s ease, transform .12s ease, background-color .15s ease;
 }
 
-/* 見出し風のラベル（例: クイックアクション）が薄い時に上書き */
-main :is(h2, h3, h4, .section-title, .label) {
-  color: #171717 !important; /* 見出しはしっかり濃く */
-  opacity: 1 !important;
+/* 既存の hover:bg-*** を上書きして“黒くならない”ように統一 */
+header .nav-right :is(a, button, [role="button"]):hover {
+  background: #fff; /* ← 黒くしない */
+  box-shadow: 0 6px 20px rgba(250, 218, 221, 0.55);
+  transform: translateY(-1px);
+}
+
+/* フォーカスリングも統一（キーボード操作で見える） */
+header .nav-right :is(a, button, [role="button"]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(250,218,221,.9), 0 0 0 1px rgba(122,93,82,.4) inset;
+}
+/* === 追記: Header右上のボタン/リンクを全部“白いピル＋🐾”に統一（CatSwitcherのトリガーを含む） === */
+header .nav-right :is(a,button,[role="button"]) {
+  background:#fff !important;
+  color:#171717 !important;
+  border:1px solid #EBD6D6 !important;
+  border-radius:9999px !important;
+  padding:6px 12px !important;
+  min-height:36px;
+  display:inline-flex; align-items:center; gap:6px;
+  transition: box-shadow .15s ease, transform .12s ease, background-color .15s ease;
+}
+/* 内側のテキスト/アイコンも色を継承（“見えない”対策） */
+header .nav-right :is(a,button,[role="button"]) *{
+  color:inherit !important; fill:currentColor !important; stroke:currentColor !important;
+}
+/* ホバー：黒にしないで“ふわっ”と影 */
+header .nav-right :is(a,button,[role="button"]):hover{
+  background:#fff !important;
+  box-shadow:0 6px 20px rgba(250,218,221,.55);
+  transform: translateY(-1px);
+}
+/* フォーカスリング */
+header .nav-right :is(a,button,[role="button"]):focus-visible{
+  outline:none !important;
+  box-shadow:0 0 0 3px rgba(250,218,221,.9), 0 0 0 1px rgba(122,93,82,.4) inset !important;
+}
+/* 肉球ホバーを自動付与（class 追加不要） */
+header .nav-right :is(a,button,[role="button"]){ position:relative; overflow:visible; }
+header .nav-right :is(a,button,[role="button"])::after{
+  content:'🐾'; position:absolute; right:-6px; top:-8px; opacity:0;
+  transform: translateY(4px) scale(.9) rotate(-10deg);
+  transition: opacity .2s ease, transform .2s ease; pointer-events:none;
+}
+header .nav-right :is(a,button,[role="button"]):hover::after{
+  opacity:1; transform: translateY(0) scale(1) rotate(-6deg);
 }
